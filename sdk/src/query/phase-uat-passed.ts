@@ -64,8 +64,10 @@ interface UatItem {
  * Passes are applied in order; each returns a sanitised string.
  */
 function stripMarkdownInjection(content: string): string {
-  // Pass 1: strip YAML frontmatter region (---\n...\n---)
-  let s = content.replace(/^---\r?\n[\s\S]*?\r?\n---/m, '');
+  // Pass 1: strip YAML frontmatter region (---\n...\n---).
+  // No /m flag: ^ must match start-of-input only so a mid-document --- line
+  // cannot anchor a false match.
+  let s = content.replace(/^---\r?\n[\s\S]*?\r?\n---/, '');
   // Pass 2: strip fenced code blocks (``` ... ```)
   s = s.replace(/```[\s\S]*?```/g, '');
   // Pass 3: strip HTML comment regions (<!-- ... -->)
@@ -96,6 +98,32 @@ function parseAllUatItems(content: string): UatItem[] {
 const HEADING_PATTERN = /###\s*(\d+)\.\s*([^\n]+)/g;
 
 /**
+ * Convert a structured UatReason to a human-readable English sentence.
+ */
+function reasonToHuman(r: UatReason): string {
+  switch (r.code) {
+    case REASON_CODE.NON_PASS_RESULT:
+      return `Item "${r.itemName}" in ${r.file} has result "${r.capturedValue}" (expected "pass").`;
+    case REASON_CODE.CASE_MISMATCH:
+      return `Item "${r.itemName}" in ${r.file} has case-mismatched result "${r.capturedValue}" (expected lowercase "pass").`;
+    case REASON_CODE.HUMAN_VERIFICATION_NEEDED:
+      return `Item "${r.itemName}" in ${r.file} requires manual human verification before UAT can pass.`;
+    case REASON_CODE.ORPHAN_ITEM_MISSING_RESULT:
+      return `Item "${r.itemName}" in ${r.file} is missing a result field.`;
+    case REASON_CODE.BRACKETED_PLACEHOLDER:
+      return `Item "${r.itemName}" in ${r.file} has an unfilled placeholder result ${r.capturedValue}.`;
+    case REASON_CODE.NO_ITEMS_EXTRACTED:
+      return `No UAT items could be parsed from ${r.file}.`;
+    case REASON_CODE.NO_PHASE_DIR:
+      return 'No phase directory was found for the requested phase.';
+    case REASON_CODE.NO_UAT_FILES:
+      return 'No *-HUMAN-UAT.md files were found in the phase directory.';
+    default:
+      return `Unknown reason code: ${(r as UatReason).code}.`;
+  }
+}
+
+/**
  * Scan stripped body for `### N. Name` headings whose number is NOT represented
  * in the set of captured item numbers. Returns orphan entries.
  * Headings that have a bracketed result line are excluded here — they will be
@@ -120,16 +148,18 @@ function findOrphanHeadings(
   return orphans;
 }
 
-export async function isPhaseUatPassed(
-  projectDir: string,
-  phase: string,
-  workstream?: string,
-): Promise<{
+export interface PhaseUatStatus {
   passed: boolean;
   reasons: UatReason[];
   reasonsHuman: string[];
   items: Record<string, unknown>[];
-}> {
+}
+
+export async function isPhaseUatPassed(
+  projectDir: string,
+  phase: string,
+  workstream?: string,
+): Promise<PhaseUatStatus> {
   try {
     await stat(projectDir);
   } catch (err: unknown) {
@@ -144,10 +174,11 @@ export async function isPhaseUatPassed(
 
   const dir = await resolvePhaseDir(phase, projectDir, workstream);
   if (!dir) {
+    const reasons: UatReason[] = [{ code: REASON_CODE.NO_PHASE_DIR }];
     return {
       passed: false,
-      reasons: [{ code: REASON_CODE.NO_PHASE_DIR }],
-      reasonsHuman: [],
+      reasons,
+      reasonsHuman: reasons.map(reasonToHuman),
       items: [],
     };
   }
@@ -156,10 +187,11 @@ export async function isPhaseUatPassed(
   const uatFiles = files.filter((f) => f.endsWith('-HUMAN-UAT.md'));
 
   if (uatFiles.length === 0) {
+    const reasons: UatReason[] = [{ code: REASON_CODE.NO_UAT_FILES }];
     return {
       passed: false,
-      reasons: [{ code: REASON_CODE.NO_UAT_FILES }],
-      reasonsHuman: [],
+      reasons,
+      reasonsHuman: reasons.map(reasonToHuman),
       items: [],
     };
   }
@@ -247,7 +279,7 @@ export async function isPhaseUatPassed(
 
   const passed = items.length > 0 && reasons.length === 0;
 
-  return { passed, reasons, reasonsHuman: [], items };
+  return { passed, reasons, reasonsHuman: reasons.map(reasonToHuman), items };
 }
 
 /**

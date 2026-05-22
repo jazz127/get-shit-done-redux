@@ -343,6 +343,10 @@ export type { WSTransportOptions } from './ws-transport.js';
 // Query registry argv normalization (matches `gsd-sdk query` and `GSDTools` hot path)
 export { createRegistry, normalizeQueryCommand } from './query/index.js';
 
+// Phase UAT predicate — programmatic access to the phase.uat-passed contract check
+export { isPhaseUatPassed, REASON_CODE, PhaseUatPassedError, ERROR_CODE } from './query/phase-uat-passed.js';
+export type { PhaseUatStatus, UatReason, ReasonCode, ErrorCode } from './query/phase-uat-passed.js';
+
 // Workstream utilities
 export { validateWorkstreamName, relPlanningPath } from './workstream-utils.js';
 

@@ -440,6 +440,109 @@ result: PASS
   });
 });
 
+describe('reasonsHuman population (defect fix)', () => {
+  it('populates reasonsHuman with a human-readable string for NON_PASS_RESULT', async () => {
+    const localTmp = await mkdtemp(join(tmpdir(), 'gsd-uat-rh1-'));
+    try {
+      const phaseDir = join(localTmp, '.planning', 'phases', '05-non-pass-human');
+      await mkdir(phaseDir, { recursive: true });
+      const content = `---
+status: complete
+phase: 5
+source: roadmap
+started: 2026-05-18T00:00:00Z
+updated: 2026-05-18T00:00:00Z
+---
+
+### 1. A failing item
+expected: it should work
+result: issue
+`;
+      await writeFile(join(phaseDir, '05-HUMAN-UAT.md'), content);
+
+      const result = await isPhaseUatPassed(localTmp, '5');
+      expect(result.passed).toBe(false);
+      expect(result.reasonsHuman.length).toBe(1);
+      expect(result.reasonsHuman[0]).toContain('A failing item');
+      expect(result.reasonsHuman[0]).toContain('"issue"');
+    } finally {
+      await rm(localTmp, { recursive: true, force: true });
+    }
+  });
+
+  it('populates reasonsHuman with a human-readable string for CASE_MISMATCH', async () => {
+    const localTmp = await mkdtemp(join(tmpdir(), 'gsd-uat-rh2-'));
+    try {
+      const phaseDir = join(localTmp, '.planning', 'phases', '05-case-mismatch-human');
+      await mkdir(phaseDir, { recursive: true });
+      const content = `---
+status: complete
+phase: 5
+source: roadmap
+started: 2026-05-18T00:00:00Z
+updated: 2026-05-18T00:00:00Z
+---
+
+### 1. Uppercase pass item
+expected: thing happens
+result: PASS
+`;
+      await writeFile(join(phaseDir, '05-HUMAN-UAT.md'), content);
+
+      const result = await isPhaseUatPassed(localTmp, '5');
+      expect(result.passed).toBe(false);
+      expect(result.reasonsHuman.length).toBe(1);
+      expect(result.reasonsHuman[0]).toContain('case-mismatched');
+      expect(result.reasonsHuman[0]).toContain('"PASS"');
+    } finally {
+      await rm(localTmp, { recursive: true, force: true });
+    }
+  });
+
+  it('returns empty reasonsHuman when UAT passes', async () => {
+    const result = await isPhaseUatPassed(tmpDir, '5');
+    expect(result.passed).toBe(true);
+    expect(result.reasonsHuman).toEqual([]);
+  });
+});
+
+describe('frontmatter strip regression — mid-document --- (defect fix)', () => {
+  it('does not truncate body when document contains a mid-document horizontal rule (---)', async () => {
+    const localTmp = await mkdtemp(join(tmpdir(), 'gsd-uat-fm1-'));
+    try {
+      const phaseDir = join(localTmp, '.planning', 'phases', '05-mid-doc-hr');
+      await mkdir(phaseDir, { recursive: true });
+      // The mid-document --- should NOT trigger another frontmatter strip.
+      const content = `---
+status: complete
+phase: 5
+source: roadmap
+started: 2026-05-18T00:00:00Z
+updated: 2026-05-18T00:00:00Z
+---
+
+Some prose section.
+
+---
+
+### 1. Real item after horizontal rule
+expected: things work
+result: pass
+`;
+      await writeFile(join(phaseDir, '05-HUMAN-UAT.md'), content);
+
+      const result = await isPhaseUatPassed(localTmp, '5');
+      // Without the fix, the mid-doc --- would be treated as a second frontmatter
+      // delimiter and the item after it would be stripped, giving 0 items.
+      expect(result.items.length).toBe(1);
+      expect(result.items[0].name).toBe('Real item after horizontal rule');
+      expect(result.passed).toBe(true);
+    } finally {
+      await rm(localTmp, { recursive: true, force: true });
+    }
+  });
+});
+
 describe('phase.uat-passed registry wire-up (cycle 16)', () => {
   it('phase.uat-passed is registered and dispatchable through the query registry', async () => {
     const localTmp = await mkdtemp(join(tmpdir(), 'gsd-uat-c16-'));
