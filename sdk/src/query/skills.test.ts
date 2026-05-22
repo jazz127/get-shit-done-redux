@@ -6,10 +6,11 @@
  * workflows interpolate into Task() prompts (regression for #2555).
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
-import { execSync } from 'node:child_process';
-import { join, resolve } from 'node:path';
+import { execSync, spawnSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
+import { join, resolve, dirname } from 'node:path';
 import { tmpdir, homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 
@@ -185,6 +186,17 @@ describe('agentSkills', () => {
 
 describe('agentSkills CLI stdout', () => {
   let tmpDir: string;
+
+  beforeAll(() => {
+    // The CLI tests spawn `node dist/cli.js`. Build it if the worktree has
+    // never been compiled (e.g. freshly checked out). This is a no-op when
+    // dist/cli.js already exists.
+    if (!existsSync(CLI)) {
+      const sdkRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+      const result = spawnSync('npm', ['run', 'build'], { cwd: sdkRoot, stdio: 'inherit' });
+      if (result.status !== 0) throw new Error('SDK build failed — cannot run CLI tests');
+    }
+  });
 
   beforeEach(async () => {
     tmpDir = await mkdtemp(join(tmpdir(), 'gsd-skills-cli-'));
