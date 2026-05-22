@@ -105,6 +105,12 @@ jobs:
         shell: bash
         run: npm ci
 
+      - name: Dependency integrity gate
+        shell: bash
+        run: |
+          chmod +x scripts/check-npm-integrity.sh
+          scripts/check-npm-integrity.sh
+
       - name: Build SDK dist (required by installer)
         shell: bash
         run: npm run build:sdk
@@ -237,6 +243,11 @@ jobs:
       - name: Install dependencies
         shell: bash
         run: npm ci
+      - name: Dependency integrity gate
+        shell: bash
+        run: |
+          chmod +x scripts/check-npm-integrity.sh
+          scripts/check-npm-integrity.sh
       - name: Build SDK dist
         shell: bash
         run: npm run build:sdk
