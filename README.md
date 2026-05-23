@@ -80,17 +80,19 @@ npx @opengsd/get-shit-done-redux@latest
 
 ---
 
-## Why I Built This
+## Why we Built This
 
-I'm a solo developer. I don't write code — Claude Code does.
+**Note that the original developer wrote these concepts but they have been adapated for the redux project**
 
-Other spec-driven tools exist, but they're all built for 50-person engineering orgs — sprint ceremonies, story points, stakeholder syncs, Jira workflows. I'm not that. I'm a creative person trying to build great things consistently.
+Most of us are solo developers. We don't write code — Claude Code does.
 
-So I built GSD. The complexity is in the system, not in your workflow. Behind the scenes: context engineering, XML prompt formatting, subagent orchestration, state management. What you see: a few commands that just work.
+Other spec-driven tools exist, but they're all built for 50-person engineering orgs — sprint ceremonies, story points, stakeholder syncs, Jira workflows. Most of us are not that. Most of us are just creative people trying to build great things consistently and making the most of AI to do so.
 
-The system gives Claude everything it needs to do the work *and* verify it. I trust the workflow. It just does a good job.
+So we found GSD and got onboard in extending and maintaing it. The complexity is in the system, not in your workflow. Behind the scenes: context engineering, XML prompt formatting, subagent orchestration, state management. What you see: a few commands that just work.
 
-— **TÂCHES**
+The system gives Claude everything it needs to do the work *and* verify it. We trust the workflow. It just does a good job.
+
+— **The open-gsd team**
 
 ---
 
